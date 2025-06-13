@@ -1,0 +1,92 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import org.json.JSONObject;
+
+public class ExchangeRateFetcher {
+    private static final String API_URL = "https://api.exchangerate-api.com/v4/latest/";
+
+    public static double getExchangeRate(String fromCurrency, String toCurrency) throws Exception {
+        String urlStr = API_URL + fromCurrency;
+        URL url = new URL(urlStr);
+        HttpURLConnection request = (HttpURLConnection) url.openConnection();
+        request.connect();
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()));
+        StringBuilder jsonText = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            jsonText.append(line);
+        }
+        reader.close();
+
+        JSONObject json = new JSONObject(jsonText.toString());
+        JSONObject rates = json.getJSONObject("rates");
+        return rates.getDouble(toCurrency);
+    }
+}
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+
+public class ConverterGUI extends JFrame {
+    private JComboBox<String> fromCurrency;
+    private JComboBox<String> toCurrency;
+    private JTextField amountField;
+    private JLabel resultLabel;
+
+    private static final String[] currencies = {"USD", "EUR", "INR", "GBP", "JPY"};
+
+    public ConverterGUI() {
+        setTitle("Currency Converter");
+        setSize(400, 200);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new GridLayout(5, 2, 10, 10));
+
+        add(new JLabel("From:"));
+        fromCurrency = new JComboBox<>(currencies);
+        add(fromCurrency);
+
+        add(new JLabel("To:"));
+        toCurrency = new JComboBox<>(currencies);
+        add(toCurrency);
+
+        add(new JLabel("Amount:"));
+        amountField = new JTextField();
+        add(amountField);
+
+        JButton convertButton = new JButton("Convert");
+        add(convertButton);
+
+        resultLabel = new JLabel("Result: ");
+        add(resultLabel);
+
+        convertButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    String from = fromCurrency.getSelectedItem().toString();
+                    String to = toCurrency.getSelectedItem().toString();
+                    double amount = Double.parseDouble(amountField.getText());
+                    double rate = ExchangeRateFetcher.getExchangeRate(from, to);
+                    double result = amount * rate;
+                    resultLabel.setText(String.format("Result: %.2f %s", result, to));
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(null, "Please enter a valid number.");
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, "Error fetching exchange rate.");
+                }
+            }
+        });
+
+        setVisible(true);
+    }
+}
+
+
+public class Main {
+    public static void main(String[] args) {
+        new ConverterGUI();
+    }
+}
